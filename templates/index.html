@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Book Recommender</title>
+    <link rel="stylesheet" href="static/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+</head>
+<body>
+    <header>
+        <h1>Book Recommender System</h1>
+    </header>
+
+    <main>
+        <section id="search-books">
+            <h2>Search for Books</h2>
+            <input type="text" id="search-query" placeholder="Type book title..." />
+            <button id="search-button">Search</button>
+            <ul id="search-results"></ul>
+        </section>
+
+        <section id="selected-books">
+            <h2>Selected Books</h2>
+            <ul id="selected-list"></ul>
+            <button id="recommend-button" disabled>Get Recommendations</button>
+        </section>
+
+        <section id="recommendations">
+            <h2>Recommendations</h2>
+            <ul id="recommendation-list"></ul>
+        </section>
+    </main>
+
+    <script>
+        document.getElementById('search-button').addEventListener('click', async () => {
+            const query = document.getElementById('search-query').value;
+            const resultsContainer = document.getElementById('search-results');
+            resultsContainer.innerHTML = '';
+
+            try {
+                const response = await axios.get(`/books?query=${encodeURIComponent(query)}`);
+                const books = response.data;
+
+                books.forEach(book => {
+                    const li = document.createElement('li');
+                    li.textContent = `${book.Book} by ${book.Author}`;
+                    li.dataset.book = JSON.stringify({ title: book.Book, author: book.Author });
+
+                    const addButton = document.createElement('button');
+                    addButton.textContent = 'Add';
+                    addButton.addEventListener('click', () => {
+                        addToSelectedBooks(book.Book, book.Author);
+                    });
+
+                    li.appendChild(addButton);
+                    resultsContainer.appendChild(li);
+                });
+            } catch (error) {
+                console.error('Error fetching books:', error);
+            }
+        });
+
+        function addToSelectedBooks(bookTitle, bookAuthor) {
+            const selectedList = document.getElementById('selected-list');
+            const li = document.createElement('li');
+            li.textContent = `${bookTitle} by ${bookAuthor}`;
+            li.dataset.book = JSON.stringify({ title: bookTitle, author: bookAuthor });
+
+            const removeButton = document.createElement('button');
+            removeButton.textContent = 'Remove';
+            removeButton.addEventListener('click', () => {
+                li.remove();
+                updateRecommendButtonState();
+            });
+
+            li.appendChild(removeButton);
+            selectedList.appendChild(li);
+            updateRecommendButtonState();
+        }
+
+        function updateRecommendButtonState() {
+            const selectedList = document.getElementById('selected-list');
+            const recommendButton = document.getElementById('recommend-button');
+            recommendButton.disabled = selectedList.children.length === 0;
+        }
+
+        document.getElementById('recommend-button').addEventListener('click', async () => {
+            const selectedList = document.getElementById('selected-list');
+            const books = Array.from(selectedList.children).map(li => JSON.parse(li.dataset.book));
+
+            try {
+                const response = await axios.post('/recommend', { read_books: books });
+                const recommendations = response.data;
+
+                const recommendationList = document.getElementById('recommendation-list');
+                recommendationList.innerHTML = '';
+
+                recommendations.forEach(recommendation => {
+                    const li = document.createElement('li');
+                    li.textContent = `${recommendation.Book} by ${recommendation.Author})`;
+                    recommendationList.appendChild(li);
+                });
+            } catch (error) {
+                console.error('Error fetching recommendations:', error);
+            }
+        });
+    </script>
+</body>
+</html>
